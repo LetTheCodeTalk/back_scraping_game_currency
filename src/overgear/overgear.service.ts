@@ -1,28 +1,26 @@
-import { Injectable} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import puppeteer from 'puppeteer';
-import { Price_Response } from './entities/price_response.entity';
+import { Entity__Price_Response } from 'src/shared/entities/price_response';
 
 @Injectable()
 export class OvergearService {
   async getPrices(region: string, faction: string, subserver: string) {
     const browser = await puppeteer.launch({
-      headless: "new"
+      headless: 'new',
     });
     const page = await browser.newPage();
-
-    // Example URL: https://overgear.com/games/wow/gold?region=eu&faction=horde&server=sargeras-eu
 
     await page.goto(
       `https://overgear.com/games/wow/gold?region=${region}&faction=${faction}&server=${subserver}-${region}`,
       {
-        waitUntil: 'networkidle2',
-      }
+        waitUntil: 'networkidle0',
+      },
     );
 
     const arrOfElements = await page.$$('div.product__item');
 
     const arrOfTextContents = [];
-    const arrOfGoldInStockArrays = [];
+    const arrOfGoldInStock = [];
     const arrOfPricesPer10k = [];
     const arrOfDeliveryTimes = [];
     const arrOfSellerNames = [];
@@ -42,7 +40,7 @@ export class OvergearService {
       const regexGoldInStock = /-(?: EU| US)(.*?)\s/;
       const matchGoldInStock = textContent.match(regexGoldInStock);
       const resultGoldInStock = matchGoldInStock ? matchGoldInStock[1] : '';
-      arrOfGoldInStockArrays.push(resultGoldInStock);
+      arrOfGoldInStock.push(resultGoldInStock);
 
       // Get Price
       const regexPricePer10k = /(?:€|\$)([\d.,]+)/;
@@ -52,7 +50,7 @@ export class OvergearService {
 
       // Delivery Time
       const regexDeliveryTime =
-        /Delivery time: (\d+) (minutes|hours).*?([€USD]\d+(\.\d+)?)/;
+        /Delivery time: (\d+) (minutes|hours).*?([€$]\d+(\.\d+)?)/;
       const matchDeliveryTime = textContent.match(regexDeliveryTime);
 
       const resultDeliveryTimeAmount = matchDeliveryTime
@@ -63,31 +61,34 @@ export class OvergearService {
         : '';
 
       arrOfDeliveryTimes.push(
-        `${resultDeliveryTimeAmount} ${resultDeliveryTimeUnit}`
+        `${resultDeliveryTimeAmount} ${resultDeliveryTimeUnit}`,
       );
     }
 
     await browser.close();
 
-
-
     const finalData = [];
     arrOfTextContents.forEach((element, i) => {
       finalData.push({
         sellerName: arrOfSellerNames[i],
-        goldInStock: arrOfGoldInStockArrays[i],
+        goldInStock: arrOfGoldInStock[i],
         pricePer10k: arrOfPricesPer10k[i],
         deliveryTime: arrOfDeliveryTimes[i],
       });
     });
 
     // Filter possibly received wrong data
-    finalData.filter((item: Price_Response) => {
-      if (!item.deliveryTime || !item.goldInStock || !item.pricePer10k || !item.sellerName) {
-        return null
+    finalData.filter((item: Entity__Price_Response) => {
+      if (
+        !item.deliveryTime ||
+        !item.goldInStock ||
+        !item.pricePer10k ||
+        !item.sellerName
+      ) {
+        return null;
       }
-      return item
-    })
+      return item;
+    });
 
     return finalData;
   }

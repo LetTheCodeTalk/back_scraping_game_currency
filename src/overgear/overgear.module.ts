@@ -4,6 +4,6 @@ import { OvergearController } from './overgear.controller';
 
 @Module({
   controllers: [OvergearController],
-  providers: [OvergearService]
+  providers: [OvergearService],
 })
 export class OvergearModule {}
